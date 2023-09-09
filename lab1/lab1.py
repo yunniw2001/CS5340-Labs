@@ -36,6 +36,7 @@ def factor_product(A, B):
     # and the output to set the cardinality
     out.card = np.zeros(len(out.var), np.int64)
     mapA = np.argmax(out.var[None, :] == A.var[:, None], axis=-1)
+    # mapA is an index array, refers to A.var's index in out.var
     mapB = np.argmax(out.var[None, :] == B.var[:, None], axis=-1)
     out.card[mapA] = A.card
     out.card[mapB] = B.card
@@ -53,6 +54,7 @@ def factor_product(A, B):
       understand what the above lines are doing, in order to implement
       subsequent parts.
     """
+    out.val = A.val[idxA] * B.val[idxB]
     return out
 
 
