@@ -80,13 +80,9 @@ def factor_marginalize(factor, var):
     # print(out.card)
     var = np.array(var)
     # print(var[:, None])
-    # var_axis = tuple(np.where(factor.var == var)[0])
+    var_axis = tuple(np.where(factor.var == var)[0])
     merge_axis = tuple(np.where(factor.var != var)[0])
-    # print(var_axis)
-
     # print(out.card)
-    # merge_axis = tuple(np.where(factor.var!=var)[0])
-    # var_axis = tuple(np.where(factor.var == var)[0])
     # print(merge_axis)
     # print(var_axis)
     # print(factor.val)
@@ -96,7 +92,6 @@ def factor_marginalize(factor, var):
     first_ap_row, indices = np.unique(all_assignments[:, merge_axis], return_inverse=True)
     out.val = np.bincount(indices, weights=factor.val)
     # print(all_assignments)
-    # print(sums)
     # print(out.var)
     # print(out.card)
     # print(out.val)
@@ -104,9 +99,7 @@ def factor_marginalize(factor, var):
     # print(result)
     # print(out)
     # print(all_assignments)
-    # print(sums)
     # print(out.val)
-    # result = np.column_stack((first_ap_row, sums))
     # print(result)
     return out
 
@@ -130,6 +123,33 @@ def observe_evidence(factors, evidence=None):
     Set the probabilities of assignments which are inconsistent with the 
     evidence to zero.
     """
+    # get intersection(observed params appear in current factor)
+    # get all assignment
+    # get cur observed params column idx
+    # get row idx where param column != observed values
+    # change the p into 0.0
+    for cur_factor in out:
+        cur_all_assignment = cur_factor.get_all_assignments()
+        observe_vars = np.array(list(evidence.keys()))
+        observe_vals = np.array(list(evidence.values()))
+        # print(observe_vars)
+        # print(observe_vals)
+        intersection = np.intersect1d(cur_factor.var, observe_vars)
+        if not len(intersection) > 0:
+            # print('yes')
+            continue
+        # print(intersection)
+        # print(observe_vars)
+        observe_vals = observe_vals[observe_vars == intersection]
+        # print(observe_vals)
+        observe_vars = intersection
+        observe_vars_idx = np.argmax(cur_factor.var[None, :] == observe_vars[:, None], axis=-1)
+        # print(observe_vars_idx)
+        # print(cur_all_assignment[:,observe_vars_idx])
+        # print(observe_vars)
+        unrelated_assignment_mask = ~np.all(cur_all_assignment[:, observe_vars_idx] == observe_vals, axis=1)
+        # print(unrelated_assignment_mask)
+        cur_factor.val[unrelated_assignment_mask] = 0.0
 
     return out
 
