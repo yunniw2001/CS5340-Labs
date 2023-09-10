@@ -277,7 +277,26 @@ def compute_marginals_naive(V, factors, evidence):
     Compute the marginal. Output should be a factor.
     Remember to normalize the probabilities!
     """
-
+    # Compute the joint distribution over all variables
+    joint_distribution = compute_joint_distribution(factors)
+    # print(joint_distribution)
+    # Reduce the joint distribution by the evidence
+    reduce_after_distribution = observe_evidence([joint_distribution], evidence)[0]
+    # print(reduce_after_distribution)
+    # Marginalizing out irrelevant variables
+    observe_vars = np.array(list(evidence.keys()))
+    var_need_to_marginalize = np.setdiff1d(joint_distribution.var, [V])
+    # var_need_to_marginalize = np.setdiff1d(var_need_to_marginalize,observe_vars)
+    # print(var_need_to_marginalize)
+    distribution_after_reduce = factor_marginalize(reduce_after_distribution, var_need_to_marginalize)
+    # print(distribution_after_reduce)
+    # normalize the final probability distribution
+    distribution_after_reduce.val = distribution_after_reduce.val / np.sum(distribution_after_reduce.val)
+    output = distribution_after_reduce
+    output.var = np.array([V])
+    # print(output.var)
+    # print(output.card)
+    # print(output)
     return output
 
 
