@@ -73,34 +73,48 @@ def factor_marginalize(factor, var):
     """ YOUR CODE HERE
     Marginalize out the variables given in var
     """
+    # print(factor.var)
+    # print(var)
     out.var = np.setdiff1d(factor.var, var)
-    out.card = factor.card[np.where(factor.var != var)[0]]
+    # print(out.var)
+    # print(factor.var)
+    out.card = factor.card[~np.isin(factor.var, var)]
+    # print(out.card)
     # print(factor.card)
     # out.card = factor.card[out.var]
     # print(out.card)
     var = np.array(var)
     # print(var[:, None])
-    var_axis = tuple(np.where(factor.var == var)[0])
-    merge_axis = tuple(np.where(factor.var != var)[0])
+    var_axis = tuple(np.where(~np.isin(factor.var, var))[0])
+    merge_axis = tuple(np.where(np.isin(factor.var, var))[0])
+    # print(merge_axis)
+
     # print(out.card)
+    # merge_axis = tuple(np.where(factor.var!=var)[0])
+    # var_axis = tuple(np.where(factor.var == var)[0])
     # print(merge_axis)
     # print(var_axis)
     # print(factor.val)
     out.val = np.zeros(np.prod(out.card))
     # print(out.val)
     all_assignments = factor.get_all_assignments()
-    first_ap_row, indices = np.unique(all_assignments[:, merge_axis], return_inverse=True)
+    # print(all_assignments.shape)
+    first_ap_row, indices = np.unique(all_assignments[:, var_axis], axis=0, return_inverse=True)
+    # print(var_axis)
+    # print(indices.shape)
+    # print(factor.val.shape)
+    # print(indices)
     out.val = np.bincount(indices, weights=factor.val)
     # print(all_assignments)
+    # print(sums)
     # print(out.var)
     # print(out.card)
     # print(out.val)
     # result = np.column_stack((first_ap_row, out.val))
     # print(result)
-    # print(out)
-    # print(all_assignments)
+    # print(out.var)
+    # print(out.card)
     # print(out.val)
-    # print(result)
     return out
 
 

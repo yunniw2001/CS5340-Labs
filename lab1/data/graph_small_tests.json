@@ -1,14 +1,14 @@
 {
 	"compute_marginals_naive": [
 		{
-			"evidence": {"3": 1},
-			"var": 0,
-			"correct_factor": {
-				"var": [0], 
-				"card": [3],
-				"val": [0.17758985, 0.48625793, 0.33615222]
-			}
-		},
+		   "evidence": {"3": 1},
+		   "var": 0,
+		   "correct_factor": {
+			"var": [0],
+			"card": [3],
+			"val": [0.17758985, 0.48625793, 0.33615222]
+		   }
+		  },
 		{
 			"evidence": {"0": 2},
 			"var": 4,
