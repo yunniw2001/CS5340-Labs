@@ -233,6 +233,13 @@ def compute_joint_distribution(factors):
     Compute the joint distribution from the list of factors. You may assume
     that the input factors are valid so no input checking is required.
     """
+    for i in range(len(factors)):
+        # print(factors[i])
+        if i == 0:
+            joint = copy.deepcopy(factors[i])
+        else:
+            joint = factor_product(joint, factors[i])
+        # print(joint)
 
     return joint
 
