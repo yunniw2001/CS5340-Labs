@@ -187,7 +187,7 @@ def factor_sum(A, B):
     You should populate the .val field with the factor sum. The code for this
     should be very similar to the factor_product().
     """
-
+    out.val = A.val[idxA] + B.val[idxB]
     return out
 
 
