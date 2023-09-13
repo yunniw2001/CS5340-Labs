@@ -134,14 +134,13 @@ def observe_evidence(factors, evidence=None):
     out = copy.deepcopy(factors)
 
     """ YOUR CODE HERE
-    Set the probabilities of assignments which are inconsistent with the 
+    Set the probabilities of assignments which are inconsistent with the
     evidence to zero.
     """
-    # get intersection(observed params appear in current factor)
-    # get all assignment
-    # get cur observed params column idx
-    # get row idx where param column != observed values
-    # change the p into 0.0
+    # 找所有的assignment
+    # 找出对应位置的索引
+    # 把索引处概率修改为0.
+    # print(out)
     for cur_factor in out:
         cur_all_assignment = cur_factor.get_all_assignments()
         observe_vars = np.array(list(evidence.keys()))
@@ -149,21 +148,29 @@ def observe_evidence(factors, evidence=None):
         # print(observe_vars)
         # print(observe_vals)
         intersection = np.intersect1d(cur_factor.var, observe_vars)
-        if not len(intersection) > 0:
+        if not len(intersection)>0:
             # print('yes')
             continue
+
         # print(intersection)
         # print(observe_vars)
-        observe_vals = observe_vals[observe_vars == intersection]
+        # print(observe_vars == intersection)
+        observe_vals = [evidence.get(k) for k in intersection]
+        # print(observe_vals)
         # print(observe_vals)
         observe_vars = intersection
-        observe_vars_idx = np.argmax(cur_factor.var[None, :] == observe_vars[:, None], axis=-1)
+        observe_vars_idx =  np.argmax(cur_factor.var[None, :] == observe_vars[:, None], axis=-1)
         # print(observe_vars_idx)
         # print(cur_all_assignment[:,observe_vars_idx])
-        # print(observe_vars)
-        unrelated_assignment_mask = ~np.all(cur_all_assignment[:, observe_vars_idx] == observe_vals, axis=1)
+        # if observe_vars[0] == 8:
+        #     print('yes')
+        # print(cur_all_assignment[:,observe_vars_idx])
+        # print(observe_vals)
+        # print(np.all(cur_all_assignment[:,observe_vars_idx]==observe_vals,axis=1))
+        unrelated_assignment_mask = ~np.all(cur_all_assignment[:,observe_vars_idx]==observe_vals,axis=1)
         # print(unrelated_assignment_mask)
         cur_factor.val[unrelated_assignment_mask] = 0.0
+        # print(out)
 
     return out
 
@@ -299,6 +306,68 @@ def compute_marginals_naive(V, factors, evidence):
     # print(output)
     return output
 
+def collect(g,i,j,msg):
+    N_j = np.array(list(g.neighbors(j)))
+    N_j_no_i =np.setdiff1d(N_j,np.array([i]))
+    for k in N_j_no_i:
+        collect(g,j,k,msg)
+    sendmessage(g,j,i,msg)
+    return
+
+def sendmessage(g,j,i,msg):
+    N_j = np.array(list(g.neighbors(j)))
+    # print()
+    N_j_no_i =np.setdiff1d(N_j,np.array([i]))
+    # print(N_j_no_i)
+    # calculate product
+    m_ki = None
+    if len(N_j_no_i) == 0:
+        m_ki = g.edges[i, j]['factor']
+        # print(m_ki)
+    else:
+        for k in range(len(N_j_no_i)):
+            k_var = N_j_no_i[k]
+            # print(k_var)
+            if k == 0:
+                m_ki = msg[k_var][j]
+            else:
+                m_ki = factor_product(m_ki,msg[k_var][j])
+        m_ki = factor_product(g.edges[i, j]['factor'],m_ki)
+    # calculate sum
+    # for root when disribute
+    if g.nodes[j] != {}:
+        # print('yes')
+        m_ki = factor_product(m_ki, g.nodes[j]['factor'])
+    msg[j][i] = factor_marginalize(m_ki,[j])
+    # print(msg[j][i])
+    return msg[j][i]
+
+def distribute(g,i,j,msg):
+    sendmessage(g,i,j,msg)
+
+    # N_j = g.neighbors(j)
+    # N_j_no_i =np.setdiff1d(N_j,g.nodes[i])
+    N_j = np.array(list(g.neighbors(j)))
+    # print()
+    N_j_no_i =np.setdiff1d(N_j,np.array([i]))
+
+    for k in N_j_no_i:
+        distribute(g,j,k,msg)
+def computeMarginal(g,i,msg):
+    n_i = np.array(list(g.neighbors(i)))
+    product = None
+    for j in range(len(n_i)):
+        if j == 0:
+            product = msg[n_i[j]][i]
+            if g.nodes[i] != {}:
+                # print('yes')
+                product= factor_product(product, g.nodes[i]['factor'])
+        else:
+            product = factor_product(product,msg[n_i[j]][i])
+    product_sum = np.sum(product.val)
+    product.val = product.val/product_sum
+    return product
+
 
 def compute_marginals_bp(V, factors, evidence):
     """Compute single node marginals for multiple variables
@@ -347,7 +416,20 @@ def compute_marginals_bp(V, factors, evidence):
     Hint: You might find it useful to add auxilliary functions. You may add 
       them as either inner (nested) or external functions.
     """
-
+    n_f = graph.neighbors(root)
+    # print(list(n_f))
+    for e in n_f:
+        collect(graph, root, e, messages)
+    n_f = graph.neighbors(root)
+    # print(list(n_f))
+    for e in n_f:
+        distribute(graph, root, e, messages)
+    # print(messages[:])
+    # print(V)
+    for i in V:
+        res = computeMarginal(graph, i, messages)
+        marginals.append(res)
+    # print(marginals)
     return marginals
 
 
