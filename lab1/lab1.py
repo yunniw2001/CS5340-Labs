@@ -235,7 +235,25 @@ def factor_max_marginalize(factor, var):
     You should make use of val_argmax to keep track of the location with the
     maximum probability.
     """
-
+    out.var = np.setdiff1d(factor.var, var)
+    out.card = factor.card[~np.isin(factor.var, var)]
+    out.val_argmax = []
+    out.val = np.zeros(np.product(out.card))
+    marginalize_axis = list(np.where(np.isin(factor.var, var))[0])
+    out_axis = list(np.where(~np.isin(factor.var, var))[0])
+    factor_assignments = factor.get_all_assignments()
+    out_assignment, out_assignment_axis, inverse_idx = np.unique(factor_assignments[:, out_axis], axis=0,
+                                                                 return_index=True, return_inverse=True)
+    for idx in range(len(out_assignment)):
+        # print(idx)
+        same_assignment_idx = np.where(inverse_idx == idx)[0]
+        max_prob = factor.val[same_assignment_idx].max()
+        max_prob_in_same_assignment_idx = same_assignment_idx[np.argmax(factor.val[same_assignment_idx])]
+        # print(out.val)
+        out.val[idx] = max_prob
+        out.val_argmax.append(dict(zip(var, factor_assignments[max_prob_in_same_assignment_idx][marginalize_axis])))
+    # print(out)
+    # print(out.val_argmax)
     return out
 
 
