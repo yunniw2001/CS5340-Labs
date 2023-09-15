@@ -451,6 +451,57 @@ def compute_marginals_bp(V, factors, evidence):
     return marginals
 
 
+def map_sendmsg(g,j,i,msg,cfg):
+    N_j = np.array(list(g.neighbors(j)))
+    N_j_no_i =np.setdiff1d(N_j,np.array([i]))
+    sum_res = None
+    if len(N_j_no_i) == 0:
+        sum_res = g.edges[i, j]['factor']
+    else:
+        for k in range(len(N_j_no_i)):
+            k_var = N_j_no_i[k]
+            if k == 0:
+                sum_res = msg[k_var][j]
+            else:
+                sum_res = factor_sum(sum_res,msg[k_var][j])
+        sum_res = factor_sum(g.edges[i, j]['factor'],sum_res)
+    if g.nodes[j] != {}:
+        sum_res = factor_sum(sum_res,g.nodes[j]['factor'])
+    msg[j][i] = factor_max_marginalize(sum_res,[j])
+    # cfg[j][i] = msg[j][i].val_argmax
+    cfg[j][i] = {}
+    assignments = sum_res.get_all_assignments()
+    i_var_idx = np.where(sum_res.var==i)[0][0]
+    j_var_idx = np.where(sum_res.var == j)[0][0]
+    for k in range(msg[j][i].card[0]):
+        # find assignment idx when x_i = k
+        x_k_assignment_row_idx = np.where(assignments[:,i_var_idx]==k)[0]
+        # find idx in all assignment of prob_max(x_i = k)
+        x_k_max_val_idx = x_k_assignment_row_idx[np.argmax(sum_res.val[x_k_assignment_row_idx])]
+        # save
+        cfg[j][i][k] = assignments[x_k_max_val_idx][j_var_idx]
+    return
+
+def map_collect(g,i,j,msg,cfg):
+    N_j = np.array(list(g.neighbors(j)))
+    N_j_no_i =np.setdiff1d(N_j,np.array([i]))
+    for k in N_j_no_i:
+        map_collect(g,j,k,msg,cfg)
+    map_sendmsg(g,j,i,msg,cfg)
+    return
+# def map_setValue(i,j,x_star):
+
+def map_setvalue(g,i,j,msg,cfg,max_deco):
+    max_deco[j] = cfg[j][i][max_deco[i]]
+    return
+
+def map_distribute(g,i,j,msg,cfg,sigma):
+    map_setvalue(g,i,j,msg,cfg,sigma)
+    N_j = np.array(list(g.neighbors(j)))
+    N_j_no_i =np.setdiff1d(N_j,np.array([i]))
+    for k in N_j_no_i:
+        map_distribute(g,j,k,msg,cfg,sigma)
+
 def map_eliminate(factors, evidence):
     """Obtains the maximum a posteriori configuration for a tree graph
     given optional evidence
@@ -472,7 +523,7 @@ def map_eliminate(factors, evidence):
 
     """ YOUR CODE HERE
     Use the algorithm from lecture 5 and perform message passing over the entire
-    graph to obtain the MAP configuration. Again, recall the message passing 
+    graph to obtain the MAP configuration. Again, recall the message passing
     protocol.
     Your code should be similar to compute_marginals_bp().
     To avoid underflow, first transform the factors in the probabilities
@@ -480,5 +531,54 @@ def map_eliminate(factors, evidence):
     You may ignore the warning for taking log of zero, that is the desired
     behavior.
     """
+    #  to log scale
 
+        # item.val[np.where(item.val==0)] = -np.inf
+        # print(item.val)
+    # evidence
+    factors = observe_evidence(factors,evidence)
+    for item in factors:
+        # print(item.val)
+        item.val = np.log(item.val)
+        # print(item.val)
+    graph = generate_graph_from_factors(factors)
+    # choose root
+
+    root = 0
+    # Create structure to hold messages
+    num_nodes = graph.number_of_nodes()
+    messages = [[None] * num_nodes for _ in range(num_nodes)]
+    config = [[None] * num_nodes for _ in range(num_nodes)]
+    n_f = graph.neighbors(root)
+    for e in n_f:
+        map_collect(graph,root,e,messages,config)
+    # get root neighbour messages
+    neighbour_list = []
+    # print(messages[:][root])
+    # neighbour_list = [row[0] for row in messages if row[0] is not None ]
+    # for item in messages[:][root]:
+    #     if not item is None:
+    #         neighbour_list.append(item)
+    # print(neighbour_list)
+    n_f = np.array(list(graph.neighbors(root)))
+    for idx in range(len(n_f)):
+        if idx == 0:
+            res_sum = messages[n_f[idx]][root]
+        else:
+            res_sum = factor_sum(res_sum,messages[n_f[idx]][root])
+    if graph.nodes[root] != {}:
+        res_sum = factor_sum(graph.nodes[root]['factor'],res_sum)
+    log_prob_max = res_sum.val.max()
+    max_decoding[root] = np.argmax(res_sum.val)
+    n_f = graph.neighbors(root)
+    for e in n_f:
+        map_distribute(graph,root,e,messages,config,max_decoding)
+    # max_decoding = messages
+
+    # print(max_decoding)
+    # {0: 0, 1: 0, 2: 0, 3: 1, 4: 0}
+    # should remove evidence
+    # print(evidence)
+    for key in evidence:
+        max_decoding.pop(key)
     return max_decoding, log_prob_max
