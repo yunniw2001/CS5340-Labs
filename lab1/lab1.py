@@ -469,17 +469,13 @@ def map_sendmsg(g,j,i,msg,cfg):
         sum_res = factor_sum(sum_res,g.nodes[j]['factor'])
     msg[j][i] = factor_max_marginalize(sum_res,[j])
     # cfg[j][i] = msg[j][i].val_argmax
+    # print(list(msg[j][i].val_argmax[0].values())[0])
+    # cfg[j][i] = msg[j][i].val_argmax
     cfg[j][i] = {}
-    assignments = sum_res.get_all_assignments()
-    i_var_idx = np.where(sum_res.var==i)[0][0]
-    j_var_idx = np.where(sum_res.var == j)[0][0]
-    for k in range(msg[j][i].card[0]):
-        # find assignment idx when x_i = k
-        x_k_assignment_row_idx = np.where(assignments[:,i_var_idx]==k)[0]
-        # find idx in all assignment of prob_max(x_i = k)
-        x_k_max_val_idx = x_k_assignment_row_idx[np.argmax(sum_res.val[x_k_assignment_row_idx])]
-        # save
-        cfg[j][i][k] = assignments[x_k_max_val_idx][j_var_idx]
+    # print(msg[j][j].val_argmax)
+    for idx, dict_item in enumerate(msg[j][i].val_argmax):
+        cfg[j][i][idx] = list(dict_item.values())[0]
+    # print(cfg[j][i])
     return
 
 def map_collect(g,i,j,msg,cfg):
@@ -489,14 +485,11 @@ def map_collect(g,i,j,msg,cfg):
         map_collect(g,j,k,msg,cfg)
     map_sendmsg(g,j,i,msg,cfg)
     return
-# def map_setValue(i,j,x_star):
-
-def map_setvalue(g,i,j,msg,cfg,max_deco):
-    max_deco[j] = cfg[j][i][max_deco[i]]
-    return
 
 def map_distribute(g,i,j,msg,cfg,sigma):
-    map_setvalue(g,i,j,msg,cfg,sigma)
+    # set value
+    sigma[j] = cfg[j][i][sigma[i]]
+    # done
     N_j = np.array(list(g.neighbors(j)))
     N_j_no_i =np.setdiff1d(N_j,np.array([i]))
     for k in N_j_no_i:
@@ -549,6 +542,7 @@ def map_eliminate(factors, evidence):
     num_nodes = graph.number_of_nodes()
     messages = [[None] * num_nodes for _ in range(num_nodes)]
     config = [[None] * num_nodes for _ in range(num_nodes)]
+    # collect
     n_f = graph.neighbors(root)
     for e in n_f:
         map_collect(graph,root,e,messages,config)
@@ -560,6 +554,7 @@ def map_eliminate(factors, evidence):
     #     if not item is None:
     #         neighbour_list.append(item)
     # print(neighbour_list)
+    # operation for root
     n_f = np.array(list(graph.neighbors(root)))
     for idx in range(len(n_f)):
         if idx == 0:
@@ -570,6 +565,7 @@ def map_eliminate(factors, evidence):
         res_sum = factor_sum(graph.nodes[root]['factor'],res_sum)
     log_prob_max = res_sum.val.max()
     max_decoding[root] = np.argmax(res_sum.val)
+
     n_f = graph.neighbors(root)
     for e in n_f:
         map_distribute(graph,root,e,messages,config,max_decoding)
